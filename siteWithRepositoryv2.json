@@ -71,7 +71,6 @@
         "serverFarmId": "[parameters('hostingPlanName')]"
       },
       "resources": [
-	        "resources": [
         {
           "apiVersion": "2015-04-01",
           "type": "config",
