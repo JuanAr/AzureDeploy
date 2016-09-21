@@ -1,0 +1,184 @@
+﻿{
+  "contentVersion": "1.0.0.0",
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "parameters": {
+    "baseUrl": {
+      "type": "string"
+    },
+    "sourceStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account Name where the assets to move are located"
+      }
+    },
+    "sourceStorageAccountKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account Key of the storage account where the assets to move are located"
+      }
+    },
+    "storageContainerName": {
+      "type": "string",
+      "metadata": {
+        "description": "Container where the assets are located and should be moved"
+      }
+    },
+    "storageBlobName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the blob containing the demo data"
+      }
+    }
+  },
+  "variables": {
+    "namePrefix": "[resourceGroup().name]",
+    "uniqueNamePrefix": "[toLower(concat(resourceGroup().name, uniqueString(subscription().subscriptionId)))]",
+    "location": "[resourceGroup().location]",
+    "stgVersion": "2015-06-15",
+    "storageAccountName": "[variables('uniqueNamePrefix')]",
+    "storageAccountType": "Standard_LRS",
+    "stgResourceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+    "sfVersion": "2016-03-01",
+    "wsVersion": "2016-03-01",
+    "hostingPlanName": "[concat(variables('uniqueNamePrefix'), 'hostingplan')]",
+    "workerSize": "1",
+    "appspsku": "Standard",
+    "webJobSiteName": "[concat(variables('uniqueNamePrefix'), 'copyws')]",
+    "webJobName": "CopyBlobs",
+    "webDeploymentPackageUrl": "[concat(parameters('baseUrl'), '/', 'CopyBlobs.zip')]",
+    "sfResourceId": "[resourceId('Microsoft.Web/serverFarms', variables('hostingPlanName'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "[variables('stgVersion')]",
+      "name": "[variables('storageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[variables('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "apiVersion": "[variables('sfVersion')]",
+      "name": "[variables('hostingPlanName')]",
+      "type": "Microsoft.Web/serverFarms",
+      "location": "[variables('location')]",
+      "properties": {
+        "name": "[variables('hostingPlanName')]",
+        "workerSize": "[variables('workerSize')]",
+        "numberOfWorkers": 1
+      },
+      "sku": {
+        "name": "S1",
+        "tier": "[variables('appspsku')]",
+        "size": "S1",
+        "family": "S",
+        "capacity": "1"
+      }
+    },
+    {
+      "apiVersion": "[variables('wsVersion')]",
+      "name": "[variables('webJobSiteName')]",
+      "type": "Microsoft.Web/Sites",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[variables('stgResourceId')]",
+        "[variables('sfResourceId')]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', variables('sfResourceId'))]": "empty"
+      },
+      "properties": {
+        "name": "[variables('webJobSiteName')]",
+        "serverFarmId": "[variables('hostingPlanName')]",
+        "siteConfig": {
+          "AlwaysOn": true,
+          "connectionStrings": [
+            {
+              "name": "AzureWebJobsDashboard",
+              "connectionString": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('stgResourceId'), variables('stgVersion')).key1)]"
+            },
+            {
+              "name": "AzureWebJobsStorage",
+              "connectionString": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('stgResourceId'), variables('stgVersion')).key1)]"
+            }
+          ],
+          "appSettings": [
+            {
+              "Name": "Data.SourceStorageAccount",
+              "Value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('sourceStorageAccountName'), ';AccountKey=', parameters('sourceStorageAccountKey'))]"
+            },
+            {
+              "Name": "Data.SourceStorageContainer",
+              "Value": "[parameters('storageContainerName')]"
+            },
+            {
+              "Name": "Data.DestinationStorageAccount",
+              "Value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('stgResourceId'), variables('stgVersion')).key1)]"
+            },
+            {
+              "Name": "Data.DestinationStorageContainer",
+              "Value": "[parameters('storageContainerName')]"
+            },
+            {
+              "Name": "Data.FilesToCopyPattern",
+              "Value": "data/*;scripts/*;EventHubSender.zip"
+            },
+            {
+              "Name": "SCM_COMMAND_IDLE_TIMEOUT",
+              "Value": "1200"
+            },
+            {
+              "Name": "WEBJOBS_IDLE_TIMEOUT",
+              "Value": "1800"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "apiVersion": "[variables('wsVersion')]",
+          "name": "MSDeploy",
+          "type": "extensions",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('webJobSiteName'))]"
+          ],
+          "properties": {
+            "packageUri": "[variables('webDeploymentPackageUrl')]",
+            "dbType": "None",
+            "connectionString": "",
+            "setParameters": {
+              "IIS Web Application Name": "[variables('webJobSiteName')]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "stgAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "stgAccountKey": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), variables('stgVersion')).key1]"
+    },
+    "stgContainerName": {
+      "type": "string",
+      "value": "[parameters('storageContainerName')]"
+    },
+    "stgBlobName": {
+      "type": "string",
+      "value": "[parameters('storageBlobName')]"
+    },
+    "webJobName": {
+      "type": "string",
+      "value": "[variables('webJobName')]"
+    },
+    "webJobSiteName": {
+      "type": "string",
+      "value": "[variables('webJobSiteName')]"
+    }
+  }
+}
