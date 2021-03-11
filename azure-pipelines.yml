@@ -10,11 +10,13 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  CalculatedVariable: coalesce(variables.OverrideVariable, variables.GlobalVariable)
+  CompileCalculatedVariable: ${{ coalesce(variables.OverrideVariable, variables.GlobalVariable) }}
+  RuntimeCalculatedVariable: $[ coalesce(variables.OverrideVariable, variables.GlobalVariable) ]
 
 steps:
 - script: |
     echo GlobalVariable: $(GlobalVariable)
     echo OverrideVariable: $(OverrideVariable)
-    echo CalculatedVariable: $(CalculatedVariable)
+    echo CompileCalculatedVariable: $(CalculatedVariable)
+    echo RuntimeCalculatedVariable: $(RuntimeCalculatedVariable)
   displayName: 'Run a multi-line script'
