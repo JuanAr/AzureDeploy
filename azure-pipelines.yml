@@ -6,7 +6,7 @@ pool:
 
 variables:
   CompileCalculatedVariable: ${{ coalesce(variables.DynamicVariable, variables.OverrideVariable, variables.GlobalVariable) }}
-  RuntimeCalculatedVariable: $[ coalesce(variables.DynamicVariable, coalesce(variables.OverrideVariable, variables.GlobalVariable) ]
+  RuntimeCalculatedVariable: $[ coalesce(variables.DynamicVariable, variables.OverrideVariable, variables.GlobalVariable) ]
 
 steps:
 - script: |
