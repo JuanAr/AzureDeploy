@@ -9,11 +9,11 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  CalculatedVariable: coalesce(variables.OverrideVariable, variables.GlobalVariable)
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
 - script: |
     echo GlobalVariable: $(GlobalVariable)
     echo OverrideVariable: $(OverrideVariable)
+    echo CalculatedVariable: $(CalculatedVariable)
   displayName: 'Run a multi-line script'
