@@ -11,6 +11,7 @@ pool:
 
 variables:
   CalculatedVariable: coalesce(variables.OverrideVariable, variables.GlobalVariable)
+
 steps:
 - script: |
     echo GlobalVariable: $(GlobalVariable)
